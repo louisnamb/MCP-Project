@@ -23,6 +23,7 @@
 #include "uart.h"
 #include "adc.h" // New Header
 #include "ultrasonic.h" // New Header
+#include "support.h" // New header
 
 #define BUTTON_0_START 0x01U // Confirm the values from my_kobuki
 #define BUTTON_1_STOP 0x02U // Confirm the values from my_kobuki
@@ -30,17 +31,69 @@
 #define DRIVE_SPEED_MM_S ((int16_t) 100)
 #define ROTATE_SPEED_MM_S ((int16_t) 100)
 
-void EXTI2_3_IRQHandler(void)
-{
-    if (EXTI->RPR1 & (1 << 2)) // new item btn has been pressed
-    {
-        EXTI->RPR1 |= (1 << 2); //clear flag
-        // make sure doesnt generate new item if theres already one on
-        if (e_stop_pressed || newItem_pressed) //make sure e-stop hasnt been pressed
+volatile uint8_t begin = 0;
+volatile uint8_t current_state = 0;
+
+void TIM16_IRQHandler(void) {
+    // Check if Update Interrupt Flag is set for TIM16
+    if (TIM16->SR & (1 << 0)) {
+        TIM16->SR &= ~(1 << 0); // Clear TIM16 update interrupt flag
+        uint8_t exceed = 0;
+        // Check proximity sensor on PB4
+        if (current_state != SCAN)
             return;
-        
-        Generate_Next_Item(); // Generate new colours
-        newItem_pressed = 1;
+        exceed = scan_state();
+        if (exceed)
+        {
+            Send_Kobuki_Move(0, 0);
+            current_state = NAVIGATE;
+        }
+    }
+}
+
+void PIN_PUPDR(GPIO_TypeDef *port, uint8_t pin, PinMode io)
+{
+    uint32_t bit_position = (uint32_t)pin * 2U;
+    port->MODER &= ~(3U << bit_position);
+    port->PUPDR &= ~(3U << bit_position);
+    port->PUPDR |= (io << bit_position); //Sets to input or output mode (1 << 10 for ex.)
+}
+
+void    register_init()
+{
+    // Enable GPIOA Clock
+    Port_Clock_Enable();
+
+    // BUTTON 1 Pin 4 Stop trigger
+    PIN_MODE_init(GPIOA, 4, MODE_PULLUP)
+
+    // BUTTON 2 Pin 11 Rotate
+    PIN_MODE_init(GPIOB, 11, MODE_PULLDOWN);
+
+    // Configure External Interrupt (EXTI) for PA4
+    EXTI->EXTICR[1] &= ~(0xFF << 0);     // Clear multiplexer bits for Pin 4 (in EXTICR[1])
+    EXTI->EXTICR[1] |=  (0x00 << 0);     // Map Port A (0x00) to Line 4
+    EXTI->IMR1      |=  (1 << 4);        // Unmask interrupt for Line 4
+    EXTI->FTSR1     |=  (1 << 4);        // Select Falling Edge trigger (HIGH to LOW)
+    EXTI->FPR1      |=  (1 << 4);        // Clear any lingering pending flag (rc_w1)
+
+    //Timer_Init(TIM16, TIM16_IRQn, 47, 49999, TRUE); // Configure TIM16 to trigger 50 ms update ISR
+    // Read distance every 100 ms
+    Timer_Init(TIM17, TIM17_IRQn, 47, 99999, TRUE); // Configure TIM17 to trigger 100 ms update ISR
+    TIM17->CR1 &= ~(1 << 0); // TIM17 disabled at start-up
+
+    // 4. Enable NVIC Interrupt Line for Pins 4-15
+    NVIC_SetPriority(EXTI4_15_IRQn, 1);  // Set priority level
+    NVIC_EnableIRQ(EXTI4_15_IRQn);       // Enable the IRQ vector on the processor
+}
+
+void EXTI4_15_IRQHandler(void)
+{
+    if (EXTI->RPR1 & (1 << 4)) // Button 1 was pressed
+    {
+        EXTI->RPR1 |= (1 << 4); //clear flag
+        if (e_stop_pressed) //make sure BUTTON_1 stop hasn't been pressed
+            return;
     }
     return ;
 }
@@ -67,40 +120,60 @@ int main(void) {
     uint8_t is_rotating = 0;
 
     UART_Init(); // Initiate UART
-    ADC_Init() ;
+    ADC_Init();
+    register_init();
     Ultrasonic_Init() ;
     Send_Kobuki_Move(0 , 0) ;
+ //   Scan_Typedef scan_param = {0};
+    uint8_t scan_begun = 1;
     while (1)
     {
         Kobuki_Read (&my_kobuki ) ;
-        Ultrasonic_Detect (&ultrasonic_object ) ;
-        /* Button 0 selects forward motion when the path is clear . */
-        if ((( my_kobuki.button & BUTTON_0_START) != 0U ) && ( ultrasonic_object.detected == 0U) ) {
-            is_running = 1U ;
-            is_rotating = 0U ;
+    //    Ultrasonic_Detect (&ultrasonic_object ) ;
+        switch (current_state)
+        {
+            case IDLE:
+                Send_Kobuki_Move (0 , 0) ;
+                begin = 1; // Begin operation
+                current_state = SCAN;
+                break;
+            case SCAN:
+                if (scan_begun)
+                {
+                    Kobuki_Rotate(100); // spin at speed 100
+                    scan_begun = 0;
+                }
         }
-        /* Button 2 selects rotation when the path is clear . */
-        else if ((( my_kobuki.button & BUTTON_2_ROTATE) != 0U) && ( ultrasonic_object.detected == 0U ) ) {
-            is_rotating = 1U ;
-            is_running = 0U ;
-        }
-        /* Button 1 , bumper or ultrasonic detection stops the robot .
-        */
-        if ((( my_kobuki.button & 0X02U) != 0U ) || ( my_kobuki.bumper != 0U ) || ( ultrasonic_object.detected != 0U ) ) {
-            is_running = 0U ;
-            is_rotating = 0U ;
-        }
-        if (is_running != 0U ){
-            Kobuki_Drive (100) ;
-        }
-        else if (is_rotating != 0U ){
-            Kobuki_Rotate (100) ;
-        }
-        else {
-            Send_Kobuki_Move (0 , 0) ;
-        }
+
         for (volatile uint32_t i =0; i < 5000U; i++){
             __NOP();
         }
     }
 }
+
+/* // old code
+// Button 0 selects forward motion when the path is clear .
+if ((( my_kobuki.button & BUTTON_0_START) != 0U ) && ( ultrasonic_object.detected == 0U) ) {
+    is_running = 1U ; // 1 is move
+    is_rotating = 0U ;
+}
+// Button 2 selects rotation when the path is clear .
+else if ((( my_kobuki.button & BUTTON_2_ROTATE) != 0U) && (ultrasonic_object.detected == 0U) ) {
+    is_rotating = 1U ;
+    is_running = 0U ;
+}
+// Button 1 , bumper or ultrasonic detection stops the robot .
+
+if ((( my_kobuki.button & 0X02U) != 0U ) || ( my_kobuki.bumper != 0U ) || ( ultrasonic_object.detected != 0U ) ) {
+    is_running = 0U ;
+    is_rotating = 0U ;
+}
+if (is_running != 0U ){
+    Kobuki_Drive (100) ;
+}
+else if (is_rotating != 0U ){
+    Kobuki_Rotate (100) ;
+}
+else {
+    Send_Kobuki_Move (0 , 0) ;
+}*/
