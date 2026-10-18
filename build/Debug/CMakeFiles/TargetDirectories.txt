@@ -1,0 +1,3 @@
+U:/Downloads/project_6_john/build/Debug/CMakeFiles/project_6_john.dir
+U:/Downloads/project_6_john/build/Debug/CMakeFiles/edit_cache.dir
+U:/Downloads/project_6_john/build/Debug/CMakeFiles/rebuild_cache.dir
