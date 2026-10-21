@@ -3,14 +3,15 @@
 #include "stm32g4xx.h"
 #include "uart.h"
 #include "kobuki.h"
+#include <stdbool.h>
 
 #define MAX_SAMPLES 200
 uint32_t pos = 0;
 uint32_t curr_min_value = ULTRASONIC_MAX_RANGE_MM;
 uint32_t curr_min_index = 0;
-uint32_t arc_positions[200];
+uint16_t arc_positions[200];
 
-void Timer_Init(TIM_TypeDef *timer, IRQn_Type irq_type, uint16_t psc, uint16_t arr, bool enable_interrupt)
+void Timer_Init(TIM_TypeDef *timer, IRQn_Type irq_type, uint16_t psc, uint16_t arr, uint8_t enable_interrupt)
 {
     timer->PSC = psc;
     timer->ARR = arr;
@@ -29,24 +30,14 @@ void Port_Clock_Enable(void)
     RCC->APBENR2  |= RCC_APBENR2_TIM1EN;
 }
 
-uint8_t scan_state()
+uint8_t scan_state(Master_t *rover)
 {
-    // Detect current distance
-    US_Typedef ultrasonic_object = {0};
-    Ultrasonic_Detect(&ultrasonic_object);
-    arc_positions[pos] = ultrasonic_object.range_mm;
-    if (ultrasonic_object.detected && arc_positions[pos] < curr_min_value) //update max value
-    {
-        curr_min_value = arc_positions[pos];
-        curr_min_index = pos;
+    uint16_t d = Ultrasonic_Read();            // raw distance, no threshold gate
+    rover->arc_positions[rover->index_pos] = d;
+    if (d < rover->curr_min_value) {
+        rover->curr_min_value = d;
+        rover->curr_min_index = rover->index_pos;
     }
-    if pos > MAX_SAMPLES
-    {
-        pos = 0
-        curr_min_value = ULTRASONIC_MAX_RANGE_MM;
-        curr_min_index = 0;
-        return (1);
-    }
-    pos++;
-    return (0); 
+    rover->index_pos++;
+    return (rover->index_pos >= MAX_SAMPLES);
 }

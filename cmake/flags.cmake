@@ -12,7 +12,6 @@ target_compile_options(${PROJECT_NAME} PUBLIC
         -fstack-usage
         -Wall
         -Wextra
-        -Wpedantic
         -Wno-unused-parameter
         -O0
         -g3

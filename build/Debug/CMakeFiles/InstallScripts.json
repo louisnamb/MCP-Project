@@ -1,7 +1,7 @@
 {
 	"InstallScripts" : 
 	[
-		"U:/Downloads/project_6_john/build/Debug/cmake_install.cmake"
+		"/Users/louisnambajimana/Downloads/project_6_john/build/Debug/cmake_install.cmake"
 	],
 	"Parallel" : false
 }

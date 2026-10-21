@@ -17,13 +17,14 @@
  */
 
 #include <stdint.h>
-#define STM32G474xx
+//#define STM32G474xx
 #include "stm32g4xx.h"
 #include "kobuki.h"
 #include "uart.h"
 #include "adc.h" // New Header
 #include "ultrasonic.h" // New Header
 #include "support.h" // New header
+#include <stdbool.h>
 
 #define BUTTON_0_START 0x01U // Confirm the values from my_kobuki
 #define BUTTON_1_STOP 0x02U // Confirm the values from my_kobuki
@@ -33,70 +34,7 @@
 
 volatile uint8_t begin = 0;
 volatile uint8_t current_state = 0;
-
-void TIM16_IRQHandler(void) {
-    // Check if Update Interrupt Flag is set for TIM16
-    if (TIM16->SR & (1 << 0)) {
-        TIM16->SR &= ~(1 << 0); // Clear TIM16 update interrupt flag
-        uint8_t exceed = 0;
-        // Check proximity sensor on PB4
-        if (current_state != SCAN)
-            return;
-        exceed = scan_state();
-        if (exceed)
-        {
-            Send_Kobuki_Move(0, 0);
-            current_state = NAVIGATE;
-        }
-    }
-}
-
-void PIN_PUPDR(GPIO_TypeDef *port, uint8_t pin, PinMode io)
-{
-    uint32_t bit_position = (uint32_t)pin * 2U;
-    port->MODER &= ~(3U << bit_position);
-    port->PUPDR &= ~(3U << bit_position);
-    port->PUPDR |= (io << bit_position); //Sets to input or output mode (1 << 10 for ex.)
-}
-
-void    register_init()
-{
-    // Enable GPIOA Clock
-    Port_Clock_Enable();
-
-    // BUTTON 1 Pin 4 Stop trigger
-    PIN_MODE_init(GPIOA, 4, MODE_PULLUP)
-
-    // BUTTON 2 Pin 11 Rotate
-    PIN_MODE_init(GPIOB, 11, MODE_PULLDOWN);
-
-    // Configure External Interrupt (EXTI) for PA4
-    EXTI->EXTICR[1] &= ~(0xFF << 0);     // Clear multiplexer bits for Pin 4 (in EXTICR[1])
-    EXTI->EXTICR[1] |=  (0x00 << 0);     // Map Port A (0x00) to Line 4
-    EXTI->IMR1      |=  (1 << 4);        // Unmask interrupt for Line 4
-    EXTI->FTSR1     |=  (1 << 4);        // Select Falling Edge trigger (HIGH to LOW)
-    EXTI->FPR1      |=  (1 << 4);        // Clear any lingering pending flag (rc_w1)
-
-    //Timer_Init(TIM16, TIM16_IRQn, 47, 49999, TRUE); // Configure TIM16 to trigger 50 ms update ISR
-    // Read distance every 100 ms
-    Timer_Init(TIM17, TIM17_IRQn, 47, 99999, TRUE); // Configure TIM17 to trigger 100 ms update ISR
-    TIM17->CR1 &= ~(1 << 0); // TIM17 disabled at start-up
-
-    // 4. Enable NVIC Interrupt Line for Pins 4-15
-    NVIC_SetPriority(EXTI4_15_IRQn, 1);  // Set priority level
-    NVIC_EnableIRQ(EXTI4_15_IRQn);       // Enable the IRQ vector on the processor
-}
-
-void EXTI4_15_IRQHandler(void)
-{
-    if (EXTI->RPR1 & (1 << 4)) // Button 1 was pressed
-    {
-        EXTI->RPR1 |= (1 << 4); //clear flag
-        if (e_stop_pressed) //make sure BUTTON_1 stop hasn't been pressed
-            return;
-    }
-    return ;
-}
+volatile uint8_t take_sample = 0;
 
 static void Send_Kobuki_Move( int16_t speed , int16_t radius )
 {
@@ -111,24 +49,79 @@ static void Send_Kobuki_Move( int16_t speed , int16_t radius )
     Kobuki_Tx( payload , sizeof(payload ) ) ;
 }
 
+void TIM17_IRQHandler(void) {
+    // Check if Update Interrupt Flag is set for TIM16
+    if (TIM17->SR & (1 << 0)) {
+        TIM17->SR &= ~(1 << 0); // Clear TIM17 update interrupt flag
+        take_sample = 0;
+}
+
+// void PIN_PUPDR(GPIO_TypeDef *port, uint8_t pin, PinMode io)
+// {
+//     uint32_t bit_position = (uint32_t)pin * 2U;
+//     port->MODER &= ~(3U << bit_position);
+//     port->PUPDR &= ~(3U << bit_position);
+//     port->PUPDR |= (io << bit_position); //Sets to input or output mode (1 << 10 for ex.)
+// }
+
+void    register_init()
+{
+    // Enable GPIOA Clock
+    Port_Clock_Enable();
+
+    // // BUTTON 1 Pin 4 Stop trigger
+    // PIN_MODE_init(GPIOA, 4, MODE_PULLUP);
+
+    // // BUTTON 2 Pin 11 Rotate
+    // PIN_MODE_init(GPIOB, 11, MODE_PULLDOWN);
+
+    // // Configure External Interrupt (EXTI) for PA4
+    // EXTI->EXTICR[1] &= ~(0xFF << 0);     // Clear multiplexer bits for Pin 4 (in EXTICR[1])
+    // EXTI->EXTICR[1] |=  (0x00 << 0);     // Map Port A (0x00) to Line 4
+    // EXTI->IMR1      |=  (1 << 4);        // Unmask interrupt for Line 4
+    // EXTI->FTSR1     |=  (1 << 4);        // Select Falling Edge trigger (HIGH to LOW)
+    // EXTI->FPR1      |=  (1 << 4);        // Clear any lingering pending flag (rc_w1)
+
+    // //Timer_Init(TIM16, TIM16_IRQn, 47, 49999, TRUE); // Configure TIM16 to trigger 50 ms update ISR
+    // // Read distance every 100 ms
+    // Timer_Init(TIM17, TIM17_IRQn, 47, 99999, 1); // Configure TIM17 to trigger 100 ms update ISR
+    // TIM17->CR1 &= ~(1 << 0); // TIM17 disabled at start-up
+
+    // // 4. Enable NVIC Interrupt Line for Pins 4-15
+    // NVIC_SetPriority(EXTI4_15_IRQn, 1);  // Set priority level
+    // NVIC_EnableIRQ(EXTI4_15_IRQn);       // Enable the IRQ vector on the processor
+}
+
+void EXTI4_15_IRQHandler(void)
+{
+    // if (EXTI->RPR1 & (1 << 4)) // Button 1 was pressed
+    // {
+    //     EXTI->RPR1 |= (1 << 4); //clear flag
+    //     if (e_stop_pressed) //make sure BUTTON_1 stop hasn't been pressed
+    //         return;
+    // }
+    // return ;
+}
+
 int main(void) {
     Kobuki_Typedef my_kobuki = {0}; // Initiate a variable with
                                     // Kobuki_Typedef that contains sensors reading
                                     // 0 = Stopped (Safe state), 1 = Running
-    US_Typedef ultrasonic_object = {0};
+    
     uint8_t is_running = 0;
+    Master_t rover {0};
     uint8_t is_rotating = 0;
-
+    uint8_t scan_init = 0;
     UART_Init(); // Initiate UART
     ADC_Init();
     register_init();
-    Ultrasonic_Init() ;
-    Send_Kobuki_Move(0 , 0) ;
+    Ultrasonic_Init();
+    Send_Kobuki_Move(0, 0);
  //   Scan_Typedef scan_param = {0};
     uint8_t scan_begun = 1;
     while (1)
     {
-        Kobuki_Read (&my_kobuki ) ;
+        Kobuki_Read(&my_kobuki);
     //    Ultrasonic_Detect (&ultrasonic_object ) ;
         switch (current_state)
         {
@@ -136,15 +129,26 @@ int main(void) {
                 Send_Kobuki_Move (0 , 0) ;
                 begin = 1; // Begin operation
                 current_state = SCAN;
+                scan_init = 1;
                 break;
             case SCAN:
-                if (scan_begun)
-                {
-                    Kobuki_Rotate(100); // spin at speed 100
-                    scan_begun = 0;
+                if (scan_init) {                      // runs once per scan
+                    scan_init = 0;
+                    rover.index_pos = 0;
+                    rover.curr_min_value = 5000U;
+                    rover.curr_min_index = 0;
+                    sample_due = 0;                   // discard any stale tick
                 }
+                Kobuki_Rotate(100);
+                if (sample_due) {
+                    sample_due = 0;
+                    if (scan_state(&rover)) {
+                        Send_Kobuki_Move(0, 0);
+                        rover.curr_state = NAVIGATE;
+                    }
+                }
+                break;
         }
-
         for (volatile uint32_t i =0; i < 5000U; i++){
             __NOP();
         }
@@ -165,8 +169,8 @@ else if ((( my_kobuki.button & BUTTON_2_ROTATE) != 0U) && (ultrasonic_object.det
 // Button 1 , bumper or ultrasonic detection stops the robot .
 
 if ((( my_kobuki.button & 0X02U) != 0U ) || ( my_kobuki.bumper != 0U ) || ( ultrasonic_object.detected != 0U ) ) {
-    is_running = 0U ;
-    is_rotating = 0U ;
+    is_running = 0U;
+    is_rotating = 0U;
 }
 if (is_running != 0U ){
     Kobuki_Drive (100) ;

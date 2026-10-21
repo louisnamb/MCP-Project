@@ -3,6 +3,7 @@
 #include "stm32g4xx.h"
 #include "adc.h"
 #include "ultrasonic.h"
+#include <stdbool.h>
 
 #define ULTRASONIC_CHANNEL ADC_CHANNEL_1
 #define ADC_MAX_VALUE 4095UL

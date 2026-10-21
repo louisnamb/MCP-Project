@@ -4,10 +4,11 @@
 #include "uart.h"
 #include "kobuki.h"
 #include "adc.h"
+#include <stdbool.h>
 
 typedef enum
 {
-    MODE_INPUT = 0,
+    MODE_INPUT_ = 0,
     MODE_OUTPUT = 1,
     MODE_ALT = 2,
     MODE_ANALOG = 3,
@@ -15,13 +16,14 @@ typedef enum
     MODE_PULLUP = 1
 } PinMode;
 
-// Scan structure to hold decoded scan data
+// Define master struct
 typedef struct {
-    uint32_t pos;
-    uint32_t curr_min_value;
-    uint32_t curr_min_index;
-    uint32_t arc_positions[200];
-} Scan_Typedef;
+    uint16_t arc_positions[100];
+    uint16_t index_pos; //array index
+    uint16_t curr_min_value; //min array value
+    uint16_t curr_min_index; //min array index
+    uint8_t curr_state; //current state
+} Master_t;
 
 typedef enum
 {
@@ -34,4 +36,5 @@ typedef enum
 } STATE;
 
 void Port_Clock_Enable(void);
-void idle_state();
+uint8_t scan_state(Master_t rover);
+void Timer_Init(TIM_TypeDef *timer, IRQn_Type irq_type, uint16_t psc, uint16_t arr, bool enable_interrupt);

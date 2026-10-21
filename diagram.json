@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "author": "Microcontroller Student",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "board-st-nucleo-g474re", "id": "stm32", "top": 0, "left": 0, "attrs": {} },
+    { "type": "fixed-potentiometer", "id": "pot1", "top": -80, "left": 160, "attrs": {} },
+    { "type": "pushbutton", "id": "btn1", "top": 20, "left": -120, "attrs": { "color": "red" } },
+    { "type": "led", "id": "led1", "top": -40, "left": 260, "attrs": { "color": "green" } },
+    { "type": "resistor", "id": "r1", "top": 20, "left": 260, "attrs": { "value": "330" } }
+  ],
+  "connections": [
+    [ "stm32:A0", "pot1:SIG", "analog", [ "v0" ] ],
+    [ "pot1:VCC", "stm32:3V3", "power", [ "v0" ] ],
+    [ "pot1:GND", "stm32:GND.1", "black", [ "v0" ] ],
+    [ "btn1:1.l", "stm32:3V3", "power", [ "v0" ] ],
+    [ "btn1:2.l", "stm32:PA4", "green", [ "v0" ] ],
+    [ "led1:A", "stm32:PA5", "green", [ "v0" ] ],
+    [ "led1:C", "r1:1", "green", [ "v0" ] ],
+    [ "r1:2", "stm32:GND.1", "black", [ "v0" ] ]
+  ]
+}

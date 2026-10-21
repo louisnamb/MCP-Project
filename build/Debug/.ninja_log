@@ -1,13 +1,15 @@
 # ninja log v7
-12	538	8137347227903010	build.ninja	e4f5eea2b187db39
-2	147	8125291895872928	C:/Users/a1889349/Desktop/Prac_6/project_6_john/build/Debug/cmake_install.cmake	fd85f714b02accda
-56	209	8137318477921970	CMakeFiles/project_6_john.dir/Src/startup_stm32g474xx.S.obj	e23010a8a3eb7716
-40	337	8137318477754420	CMakeFiles/project_6_john.dir/Src/sysmem.c.obj	167ed68d723c01cf
-31	523	8137318477660580	CMakeFiles/project_6_john.dir/Src/syscall.c.obj	cbed42b805d9ca8f
-31	536	8137320057528500	CMakeFiles/project_6_john.dir/Src/Kobuki_drivers/uart.c.obj	a96cddbd8a63892d
-28	618	8137345360907680	CMakeFiles/project_6_john.dir/Src/Kobuki_drivers/kobuki.c.obj	d58bf392b0563818
-21	622	8137344023272090	CMakeFiles/project_6_john.dir/Src/main.c.obj	5da20ca8da0eddd
-624	1067	8137345366362420	project_6_john.elf	21461abc65634fb2
-84	616	8137318478208090	CMakeFiles/project_6_john.dir/Src/ADC/adc.c.obj	89f1e8beb9752284
-29	537	8137340525180110	CMakeFiles/project_6_john.dir/Src/Ultrasonic/ultrasonic.c.obj	e2866de471be095b
-12	538	8137347227036240	U:/Downloads/project_6_john/build/Debug/cmake_install.cmake	e4f5eea2b187db39
+4	83	1792625026727513179	CMakeFiles/project_6_john.dir/Src/startup_stm32g474xx.S.obj	ede6cdc2012704f5
+3	174	1792625026726574593	CMakeFiles/project_6_john.dir/Src/sysmem.c.obj	8c733a18877f4f8
+3	178	1792625026726149175	CMakeFiles/project_6_john.dir/Src/syscall.c.obj	845230126f0a8964
+5	322	1792625026728832015	CMakeFiles/project_6_john.dir/Src/ADC/adc.c.obj	350b4dc88f2d6254
+5	329	1792625026728452889	CMakeFiles/project_6_john.dir/Src/Kobuki_drivers/kobuki.c.obj	ada13efcfe1bfa2a
+6	310	1792625026729842060	CMakeFiles/project_6_john.dir/Src/Ultrasonic/ultrasonic.c.obj	40c23c33d9b42ee3
+5	304	1792625026728029221	CMakeFiles/project_6_john.dir/Src/Kobuki_drivers/uart.c.obj	1a1056faf4620887
+5	156	1792625051058571960	CMakeFiles/project_6_john.dir/Src/startup_stm32g474xx.S.obj	ede6cdc2012704f5
+3	218	1792625051056706205	CMakeFiles/project_6_john.dir/Src/sysmem.c.obj	8c733a18877f4f8
+2	344	1792625051055957828	CMakeFiles/project_6_john.dir/Src/syscall.c.obj	845230126f0a8964
+9	496	1792625051062460220	CMakeFiles/project_6_john.dir/Src/Kobuki_drivers/kobuki.c.obj	ada13efcfe1bfa2a
+7	538	1792625051060699090	CMakeFiles/project_6_john.dir/Src/Kobuki_drivers/uart.c.obj	1a1056faf4620887
+12	548	1792625051065368977	CMakeFiles/project_6_john.dir/Src/ADC/adc.c.obj	350b4dc88f2d6254
+14	557	1792625051067824733	CMakeFiles/project_6_john.dir/Src/Ultrasonic/ultrasonic.c.obj	40c23c33d9b42ee3
