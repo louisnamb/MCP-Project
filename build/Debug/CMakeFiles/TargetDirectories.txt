@@ -1,0 +1,3 @@
+/Users/louisnambajimana/Downloads/project_6_john 3/build/Debug/CMakeFiles/project_6_john.dir
+/Users/louisnambajimana/Downloads/project_6_john 3/build/Debug/CMakeFiles/edit_cache.dir
+/Users/louisnambajimana/Downloads/project_6_john 3/build/Debug/CMakeFiles/rebuild_cache.dir
