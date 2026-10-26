@@ -223,11 +223,11 @@
 			[
 				{
 					"name" : "HELPSTRING",
-					"value" : "No help, variable specified on the command line."
+					"value" : "Path to CMake executable."
 				}
 			],
-			"type" : "UNINITIALIZED",
-			"value" : "cube-cmake"
+			"type" : "INTERNAL",
+			"value" : "/Users/louisnambajimana/Library/Application Support/stm32cube/bundles/cmake/4.4.0+st.1/CMake.app/Contents/bin/cmake"
 		},
 		{
 			"name" : "CMAKE_CPACK_COMMAND",

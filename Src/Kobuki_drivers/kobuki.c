@@ -12,8 +12,70 @@
 #define WHEEL_DROP 5
 #define CLIFF 6
 #define BUTTON 13
+#define PI (3.14159)
+#define WHEEL_RADIUS (35.0) // mm
+#define REVOLUTIONS_PER_TICK (132.0/6545.0) /52.0
+#define MM_PER_TICK (2.0 * PI * WHEEL_RADIUS * REVOLUTIONS_PER_TICK )
+#define DEG_PER_TICK (1.0/100.0)
+#define GAIN_ROTATE (1.0/0.90)
+#define GAIN_DRIVE (100.0/100.0)
+#define sign(x)((int8_t)((x) >= 0 ? 1 : -1))
+# define DIST_LSB 7 // only needs 1 wheel
+# define DIST_MSB 8
+# define BUTTON 13
+# define ANGLE_LSB 24 // only needs 1 wheel
+# define ANGLE_MSB 25
+// Truncated speed
+# define SPEED_LIMIT (int16_t)150 // mm / s
+# define SEARCH_SPEED ((int16_t)75) // mm / s
+# define STOP ((int16_t)0)// mm / s
+# define MIN_SPEED ((int16_t)50) // mm / s
+
 uint32_t kobuki_good_packets = 0, kobuki_bad_packets = 0;
 uint8_t  kobuki_rx_buffer[SIZE_FEEDBACK];
+// static variables and flags , keep these here in kobuki . c
+static volatile int32_t setpoint_distance_tick ;
+static volatile int16_t setpoint_angle_deg ;
+static uint8_t rotation_complete = 0;
+static uint8_t distance_complete = 0;
+
+void Kobuki_Rotate_Angle(int16_t current_angle_tick) {
+    volatile int16_t speed ;
+    volatile int16_t error ;
+    volatile int32_t current_angle_deg ;
+    current_angle_deg = (int32_t)((double)(current_angle_tick+(int32_t)18000) * DEG_PER_TICK);
+    error = (int16_t) ( setpoint_angle_deg - current_angle_deg);
+    // Check for non - optimal rotation angle
+    if (abs(error) > 180) {
+        // Always rotate with the minimum angle e . g . +270 -> -90.
+        // Introduces singularity - loses sign and truncates error .
+        error = - sign (error) *(abs(error) % 180);
+        // Special cases in circular buffer . Offset to correct error .
+        if ((error < 0) && (current_angle_deg < setpoint_angle_deg)) {
+            error = -(error + 180);
+        }
+        else if ((error > 0) && (current_angle_deg > setpoint_angle_deg)) {
+            error = -(error - 180);
+        // Does this make sense ? Is there a simpler way ?
+        }
+    }
+    if (abs(error) <= 0) {
+        rotation_complete = 1;
+    }
+    else {
+        speed = (sign(error) * MIN_SPEED) + (int16_t) (GAIN_ROTATE * error);
+        Kobuki_Rotate(speed);
+    }
+}
+
+void Kobuki_Rotate_Angle_Setpoint(int16_t current_angle_tick, int16_t rot_angle_deg) {
+    volatile int32_t init_angle ;
+    rotation_complete = 0;
+    // initial angle [ -18000 ,18000] ->[0 -360] deg
+    init_angle = (int32_t)((double)(current_angle_tick + (int32_t)18000) * DEG_PER_TICK);
+    // setpoint angle
+    setpoint_angle_deg = (init_angle + rot_angle_deg + 360) % 360; // [0 -360]
+}
 
 // Kobuki read datastream
 void Kobuki_Read(Kobuki_Typedef *kobuki) {
@@ -85,9 +147,6 @@ uint8_t Kobuki_Rx(uint8_t *feedback, uint32_t size_feedback) {
     rx_checksum = UART_Rx();
     return (checksum != rx_checksum);
 }
-
-
-
 
 void Kobuki_Drive(int16_t speed) {
     uint8_t speed_lsb = 0;

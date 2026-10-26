@@ -139,6 +139,16 @@ build CMakeFiles/project_6_john.dir/Src/Support/navigation.c.obj: C_COMPILER__pr
   OBJECT_FILE_DIR = CMakeFiles/project_6_john.dir/Src/Support
   TARGET_SUPPORT_DIR = CMakeFiles/project_6_john.dir
 
+build CMakeFiles/project_6_john.dir/Src/Support/align_deposit.c.obj: C_COMPILER__project_6_john_unscanned_Debug /Users/louisnambajimana/Downloads/project_6_john$ 3/Src/Support/align_deposit.c || cmake_object_order_depends_target_project_6_john
+  CONFIG = Debug
+  DEFINES = -DDEBUG -DRTE_DEVICE_STARTUP_STM32G4XX -DSTM32G474xx -DSTM32G4xx -DUSE_HAL_DRIVER
+  DEP_FILE = CMakeFiles/project_6_john.dir/Src/Support/align_deposit.c.obj.d
+  FLAGS = -fdata-sections -ffunction-sections -Wl,--gc-sections -Wno-comment -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mlittle-endian -mthumb -std=gnu11 -fstack-usage -Wall -Wextra -Wpedantic -Wno-unused-parameter -O0 -g3 -ggdb
+  INCLUDES = -I"/Users/louisnambajimana/Downloads/project_6_john 3/Inc" -I"/Users/louisnambajimana/Downloads/project_6_john 3/Inc/drivers/CMSIS/Core/Include" -I"/Users/louisnambajimana/Downloads/project_6_john 3/Inc/drivers/BSP/STM32G4xx_Nucleo" -I"/Users/louisnambajimana/Downloads/project_6_john 3/Inc/drivers/STM32G4xx_HAL_Driver/Inc" -I"/Users/louisnambajimana/Downloads/project_6_john 3/Inc/drivers/Core/Inc" -I"/Users/louisnambajimana/Downloads/project_6_john 3/Inc/drivers/CMSIS/Device/ST/STM32G4xx/Include" -I"/Users/louisnambajimana/Downloads/project_6_john 3/Src/Kobuki_drivers" -I"/Users/louisnambajimana/Downloads/project_6_john 3/Src/G474RE_Drivers" -I"/Users/louisnambajimana/Downloads/project_6_john 3/Src/Ultrasonic" -I"/Users/louisnambajimana/Downloads/project_6_john 3/Src/ADC" -I"/Users/louisnambajimana/Downloads/project_6_john 3/Src/Support"
+  OBJECT_DIR = CMakeFiles/project_6_john.dir
+  OBJECT_FILE_DIR = CMakeFiles/project_6_john.dir/Src/Support
+  TARGET_SUPPORT_DIR = CMakeFiles/project_6_john.dir
+
 
 # =============================================================================
 # Link build statements for EXECUTABLE target project_6_john
@@ -147,7 +157,7 @@ build CMakeFiles/project_6_john.dir/Src/Support/navigation.c.obj: C_COMPILER__pr
 #############################################
 # Link the executable project_6_john.elf
 
-build project_6_john.elf: C_EXECUTABLE_LINKER__project_6_john_Debug CMakeFiles/project_6_john.dir/Src/syscall.c.obj CMakeFiles/project_6_john.dir/Src/sysmem.c.obj CMakeFiles/project_6_john.dir/Src/main.c.obj CMakeFiles/project_6_john.dir/Src/startup_stm32g474xx.S.obj CMakeFiles/project_6_john.dir/Src/Kobuki_drivers/uart.c.obj CMakeFiles/project_6_john.dir/Src/Kobuki_drivers/kobuki.c.obj CMakeFiles/project_6_john.dir/Src/ADC/adc.c.obj CMakeFiles/project_6_john.dir/Src/Ultrasonic/ultrasonic.c.obj CMakeFiles/project_6_john.dir/Src/Support/navigation.c.obj | stm32g474xe_flash.ld
+build project_6_john.elf: C_EXECUTABLE_LINKER__project_6_john_Debug CMakeFiles/project_6_john.dir/Src/syscall.c.obj CMakeFiles/project_6_john.dir/Src/sysmem.c.obj CMakeFiles/project_6_john.dir/Src/main.c.obj CMakeFiles/project_6_john.dir/Src/startup_stm32g474xx.S.obj CMakeFiles/project_6_john.dir/Src/Kobuki_drivers/uart.c.obj CMakeFiles/project_6_john.dir/Src/Kobuki_drivers/kobuki.c.obj CMakeFiles/project_6_john.dir/Src/ADC/adc.c.obj CMakeFiles/project_6_john.dir/Src/Ultrasonic/ultrasonic.c.obj CMakeFiles/project_6_john.dir/Src/Support/navigation.c.obj CMakeFiles/project_6_john.dir/Src/Support/align_deposit.c.obj | stm32g474xe_flash.ld
   CONFIG = Debug
   FLAGS = -fdata-sections -ffunction-sections -Wl,--gc-sections -Wno-comment
   LINK_FLAGS = -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mlittle-endian -mthumb "-T/Users/louisnambajimana/Downloads/project_6_john 3/build/Debug/stm32g474xe_flash.ld" "-Wl,-Map=/Users/louisnambajimana/Downloads/project_6_john 3/build/Debug/project_6_john.map" -u _printf_float --specs=nosys.specs -Wl,--start-group -lc -lm -lstdc++ -lsupc++ -Wl,--end-group -Wl,-z,max-page-size=8 -Wl,--print-memory-usage

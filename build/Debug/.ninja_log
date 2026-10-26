@@ -1,5 +1,5 @@
 # ninja log v7
-12	538	1793011544062996611	build.ninja	e4f5eea2b187db39
+12	538	1793016607015628626	build.ninja	e4f5eea2b187db39
 2	147	8125291895872928	C:/Users/a1889349/Desktop/Prac_6/project_6_john/build/Debug/cmake_install.cmake	fd85f714b02accda
 4	104	1792734189730371736	CMakeFiles/project_6_john.dir/Src/startup_stm32g474xx.S.obj	c8a64310180c74f1
 3	144	1792734189729866277	CMakeFiles/project_6_john.dir/Src/sysmem.c.obj	e2c84510cfbfc82b
@@ -12,3 +12,13 @@
 17	380	1792734189743409510	CMakeFiles/project_6_john.dir/Src/Ultrasonic/ultrasonic.c.obj	7bb927fd39cfabc5
 12	538	8137347227036240	U:/Downloads/project_6_john/build/Debug/cmake_install.cmake	e4f5eea2b187db39
 19	142	1792734189745140264	CMakeFiles/project_6_john.dir/Src/Support/navigation.c.obj	bf0bed6eac2e4f6
+6	109	1793016607015628626	build.ninja	d8244be997de2f66
+6	109	1793016607015628626	/Users/louisnambajimana/Downloads/project_6_john 3/build/Debug/cmake_install.cmake	d8244be997de2f66
+7	253	1793016607040396786	CMakeFiles/project_6_john.dir/Src/Support/navigation.c.obj	bf0bed6eac2e4f6
+4	169	1793016781587979521	CMakeFiles/project_6_john.dir/Src/Support/navigation.c.obj	bf0bed6eac2e4f6
+4	288	1793016781587763729	CMakeFiles/project_6_john.dir/Src/Kobuki_drivers/kobuki.c.obj	ea13f6a1caa18ed1
+4	285	1793017003380279014	CMakeFiles/project_6_john.dir/Src/Support/align_deposit.c.obj	18cf839a734878a4
+3	287	1793017003379152383	CMakeFiles/project_6_john.dir/Src/main.c.obj	39ee4731b0f7a397
+287	447	1793017003663760083	project_6_john.elf	fa278a2ff7572f27
+2	278	1793017079832907435	CMakeFiles/project_6_john.dir/Src/Support/align_deposit.c.obj	18cf839a734878a4
+279	370	1793017080109106395	project_6_john.elf	fa278a2ff7572f27

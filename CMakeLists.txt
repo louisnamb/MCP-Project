@@ -36,6 +36,7 @@ target_sources(${PROJECT_NAME} PRIVATE
     "Src/ADC/adc.c"
     "Src/Ultrasonic/ultrasonic.c"
     "Src/Support/navigation.c"
+    "Src/Support/align_deposit.c"
 )
 
 # Add include directories

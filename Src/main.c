@@ -1,3 +1,4 @@
+#include "Navigation.h"
 #include <stdint.h>
 #define STM32G474xx
 #include "stm32g4xx.h"
@@ -12,6 +13,8 @@
 #define BUTTON_2_ROTATE  0x04U   /* start rotating scan */
 #define ROTATE_SPEED_MM_S ((int16_t) 100)
 #define MAX_SAMPLES      100U
+#define TURN_TIMEOUT_MS   10000U
+
 
 Kobuki_Typedef my_kobuki = {0};
 volatile uint32_t loop_count = 0;     /* above main() */
@@ -25,13 +28,17 @@ typedef enum {
 } Mode_t;
 
 typedef struct {
-    uint16_t arc_positions[MAX_SAMPLES];
-    uint16_t index_pos;
-    uint16_t curr_min_value;
-    uint16_t curr_min_index;
+    uint16_t arc_positions[MAX_SAMPLES];   /* ultrasonic distance at each sample        */
+    int16_t  arc_angles[MAX_SAMPLES];      /* gyro heading when each sample was taken   */
+    uint16_t index_pos;                    /* array index                               */
+    uint16_t curr_min_value;               /* smallest distance so far                  */
+    uint16_t curr_min_index;               /* where that smallest distance is           */
 } Master_t;
 
-static Master_t rover = {0};   /* static so you can watch it in the debugger */
+/* Globals so they can be watched in the debugger */
+Kobuki_Typedef kobuki = {0};          /* also used by align_and_deposit.c and kobuki.c */
+Master_t rover = {0};
+volatile Mode_t   mode = MODE_IDLE;
 
 static void Send_Kobuki_Move( int16_t speed , int16_t radius )
 {
@@ -45,11 +52,13 @@ static void Send_Kobuki_Move( int16_t speed , int16_t radius )
     Kobuki_Tx( payload , sizeof(payload ) ) ;
 }
 
+/* Take one sample. Returns 1 when the array is full (one revolution done). */
 static uint8_t scan_state(Master_t *r)
 {
     uint16_t d = Ultrasonic_Read();
     r->arc_positions[r->index_pos] = d;
-    if (d < r->curr_min_value) {
+    r->arc_angles[r->index_pos]    = kobuki.angle;     /* remember which way we were facing */
+    if ((d != 0U) && (d < r->curr_min_value)) {         /* ignore 0 = no echo */
         r->curr_min_value = d;
         r->curr_min_index = r->index_pos;
     }
@@ -74,6 +83,7 @@ int main(void) {
     Mode_t mode = MODE_IDLE;
     uint32_t time_ms = 0U;
     uint8_t sample_due;
+    uint32_t turn_start_ms = 0U;
 
     UART_Init();
     ADC_Init();
@@ -126,7 +136,18 @@ int main(void) {
                 Kobuki_Rotate(ROTATE_SPEED_MM_S);
                 if (sample_due) {
                     if (scan_state(&rover)) {
-                        mode = MODE_IDLE;   /* done: results in rover.* */
+                        Send_Kobuki_Move(0, 0);
+                        /* how far from where we face now to where the minimum was seen */
+                        int32_t delta = (int32_t)rover.arc_angles[rover.curr_min_index] - kobuki.angle;
+                        if (delta > 18000)  delta -= 36000;    /* take the short way round */
+                        if (delta < -18000) delta += 36000;
+                        Kobuki_Rotate_Angle_Setpoint(kobuki.angle, (int16_t)(delta / 100));
+                        turn_start_ms = time_ms;
+                        Kobuki_Rotate_Angle(kobuki.angle);
+                        if ((kobuki.rotation_complete != 0U) || ((time_ms - turn_start_ms) >= TURN_TIMEOUT_MS)) {
+                            Send_Kobuki_Move(0 , 0);
+                            mode = MODE_IDLE;           /* now facing the closest object */
+                        }
                     }
                 }
                 break;
