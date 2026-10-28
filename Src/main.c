@@ -7,6 +7,7 @@
 #include "adc.h"
 #include "ultrasonic.h"
 #include "navigation.h"
+#include "align_deposit.h"
 
 #define BUTTON_0_START   0x01U   /* start autonomous navigation */
 #define BUTTON_1_STOP    0x02U
@@ -14,10 +15,6 @@
 #define ROTATE_SPEED_MM_S ((int16_t) 100)
 #define MAX_SAMPLES      100U
 #define TURN_TIMEOUT_MS   10000U
-
-
-Kobuki_Typedef my_kobuki = {0};
-volatile uint32_t loop_count = 0;     /* above main() */
 
 typedef enum {
     MODE_IDLE = 0, 
@@ -35,10 +32,21 @@ typedef struct {
     uint16_t curr_min_index;               /* where that smallest distance is           */
 } Master_t;
 
+typedef enum {
+    SCAN_INIT = 0,
+    SCAN_SPIN = 1, 
+    SCAN_TURN = 2
+} ScanPhase_t;
+
+static ScanPhase_t scan_phase = SCAN_SPIN;
+Kobuki_Typedef my_kobuki = {0};
 /* Globals so they can be watched in the debugger */
-Kobuki_Typedef kobuki = {0};          /* also used by align_and_deposit.c and kobuki.c */
 Master_t rover = {0};
-volatile Mode_t   mode = MODE_IDLE;
+volatile Mode_t   mode = MODE_SCAN;
+volatile uint32_t loop_count = 0;     /* above main() */
+static int32_t swept = 0;       /* total rotation in 0.01 deg, unwrapped */
+static int16_t prev_angle = 0;
+
 
 static void Send_Kobuki_Move( int16_t speed , int16_t radius )
 {
@@ -52,12 +60,22 @@ static void Send_Kobuki_Move( int16_t speed , int16_t radius )
     Kobuki_Tx( payload , sizeof(payload ) ) ;
 }
 
+static void Scan_Start(void) {
+    rover.index_pos = 0;
+    rover.curr_min_value = 5000U;
+    rover.curr_min_index = 0;
+    swept = 0;
+    prev_angle = my_kobuki.angle;
+    scan_phase = SCAN_SPIN;
+}
+
 /* Take one sample. Returns 1 when the array is full (one revolution done). */
 static uint8_t scan_state(Master_t *r)
 {
+    if (r->index_pos >= MAX_SAMPLES) return 1;
     uint16_t d = Ultrasonic_Read();
     r->arc_positions[r->index_pos] = d;
-    r->arc_angles[r->index_pos]    = kobuki.angle;     /* remember which way we were facing */
+    r->arc_angles[r->index_pos]    = my_kobuki.angle;     /* remember which way we were facing */
     if ((d != 0U) && (d < r->curr_min_value)) {         /* ignore 0 = no echo */
         r->curr_min_value = d;
         r->curr_min_index = r->index_pos;
@@ -80,9 +98,8 @@ static void SampleTimer_Init(void)
 int main(void) {
     US_Typedef ultrasonic_object = {0};
     Navigation_t navigation = {0};
-    Mode_t mode = MODE_IDLE;
     uint32_t time_ms = 0U;
-    uint8_t sample_due;
+//    uint8_t //sample_due;
     uint32_t turn_start_ms = 0U;
 
     UART_Init();
@@ -90,7 +107,7 @@ int main(void) {
     Ultrasonic_Init();
     SampleTimer_Init();
     Send_Kobuki_Move(0 , 0);
-/* once, after the other init calls */
+    /* once, after the other init calls */
     RCC->AHB2ENR |= RCC_AHB2ENR_GPIOAEN;
     GPIOA->MODER &= ~GPIO_MODER_MODE5;
     GPIOA->MODER |= GPIO_MODER_MODE5_0;          /* output */
@@ -102,28 +119,23 @@ int main(void) {
         Ultrasonic_Detect(&ultrasonic_object);
 
         /* 100 ms tick */
-        sample_due = 0U;
+        //sample_due = 0U;
         if (TIM17->SR & TIM_SR_UIF) {
             TIM17->SR &= ~TIM_SR_UIF;
             time_ms += 100U;
-            sample_due = 1U;
+            //sample_due = 1U;
         }
-
         /* ---- Mode selection ---- */
         if (((my_kobuki.button & BUTTON_0_START) != 0U) && (mode == MODE_IDLE)) {
             Navigation_init();
             mode = MODE_NAVIGATE;
         }
         else if (((my_kobuki.button & BUTTON_2_ROTATE) != 0U) && (mode == MODE_IDLE)) {
-            rover.index_pos      = 0;
-            rover.curr_min_value = 5000U;
-            rover.curr_min_index = 0;
-            sample_due = 0U;            /* discard stale tick */
+            //sample_due = 0U;
             mode = MODE_SCAN;
         }
-
         /* Button 1 or bumper stops everything */
-        if (((my_kobuki.button & BUTTON_1_STOP) != 0U)) {
+        if (((my_kobuki.button & BUTTON_1_STOP) != 0U) || (my_kobuki.wheeldrop != 0U)) {
             mode = MODE_IDLE;
         }
         /* ---- Mode actions ---- */
@@ -133,23 +145,40 @@ int main(void) {
                 Send_Kobuki_Move(0 , 0);
                 break;
             case MODE_SCAN:
-                Kobuki_Rotate(ROTATE_SPEED_MM_S);
-                if (sample_due) {
-                    if (scan_state(&rover)) {
-                        Send_Kobuki_Move(0, 0);
-                        /* how far from where we face now to where the minimum was seen */
-                        int32_t delta = (int32_t)rover.arc_angles[rover.curr_min_index] - kobuki.angle;
-                        if (delta > 18000)  delta -= 36000;    /* take the short way round */
-                        if (delta < -18000) delta += 36000;
-                        Kobuki_Rotate_Angle_Setpoint(kobuki.angle, (int16_t)(delta / 100));
-                        turn_start_ms = time_ms;
-                        Kobuki_Rotate_Angle(kobuki.angle);
-                        if ((kobuki.rotation_complete != 0U) || ((time_ms - turn_start_ms) >= TURN_TIMEOUT_MS)) {
-                            Send_Kobuki_Move(0 , 0);
-                            mode = MODE_IDLE;           /* now facing the closest object */
+                if (scan_phase == SCAN_INIT) {
+                    Scan_Start();
+                }
+                else if (scan_phase == SCAN_SPIN) {
+                    Kobuki_Rotate(ROTATE_SPEED_MM_S);
+
+                    int32_t d = (int32_t)my_kobuki.angle - prev_angle;
+                    if (d >  18000) d -= 36000;
+                    if (d < -18000) d += 36000;
+                    swept += (d < 0) ? -d : d;
+                    prev_angle = my_kobuki.angle;
+
+                    /* one sample per 3.6 deg, so 100 samples = 360 deg */
+                    if (swept >= (int32_t)(rover.index_pos + 1U) * 360) {
+                        if (scan_state(&rover)) {
+                            Send_Kobuki_Move(0, 0);
+                            int32_t delta = (int32_t)rover.arc_angles[rover.curr_min_index] - my_kobuki.angle;
+                            if (delta >  18000) delta -= 36000;
+                            if (delta < -18000) delta += 36000;
+                            Kobuki_Rotate_Angle_Setpoint(my_kobuki.angle, (int16_t)(delta / 100));
+                            turn_start_ms = time_ms;
+                            scan_phase = SCAN_TURN;
                         }
                     }
                 }
+                else { /* SCAN_TURN */
+                    Kobuki_Rotate_Angle(my_kobuki.angle);   /* every loop, not once */
+                    if ((my_kobuki.rotation_complete != 0U) ||
+                        ((time_ms - turn_start_ms) >= TURN_TIMEOUT_MS)) {
+                        Send_Kobuki_Move(0, 0);
+                        mode = MODE_IDLE;
+                    }
+                }
+                break;
                 break;
             case MODE_NAVIGATE:
                 navigation.ultrasonic_distance = ultrasonic_object.range_mm;
@@ -158,14 +187,23 @@ int main(void) {
                 navigation.bumper_detected = (my_kobuki.bumper !=0U);
                 navigation.wheeldrop = my_kobuki.wheeldrop !=0U;
                 Navigation_update(&navigation, time_ms);
+                /* TRANSITION CONDITION: 
+                   If navigation brings us close to a target object (e.g., within 400mm), 
+                   switch from roaming/navigating to precision alignment and deposit. */
                 if (ultrasonic_object.detected && (ultrasonic_object.range_mm <= 400U)) {
                     Send_Kobuki_Move(0, 0);       // Safely halt navigation motion
                     Reset_Align_And_Deposit();    // Initialize align_deposit state machine variables
                     mode = MODE_ALIGN_DEPOSIT;    // Switch FSM state!
                 }
                 break;
-            case MODE_ALIGN_DESOPIT:
+            case MODE_ALIGN_DEPOSIT:
+                if (Run_Align_And_Deposit(&my_kobuki, &ultrasonic_object)) {
+                    /* Alignment and approach finished */
+                    mode = MODE_IDLE;
+                //    led_1 = GREEN;
+                }
                 break;
+
             default:
                 Send_Kobuki_Move(0 , 0);
                 break;
