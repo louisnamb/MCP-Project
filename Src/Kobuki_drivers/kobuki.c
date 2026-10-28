@@ -1,35 +1,10 @@
 #include <stdint.h>
-#define STM32G474xx
+//#define STM32G474xx
 #include "stm32g4xx.h"
-#include "uart.h"
 #include "kobuki.h"
-
-// Define buffer for feedback
-#define SIZE_FEEDBACK 14
-
-// Buffer definitions for payload
-#define BUMPER 4
-#define WHEEL_DROP 5
-#define CLIFF 6
-#define BUTTON 13
-#define PI (3.14159)
-#define WHEEL_RADIUS (35.0) // mm
-#define REVOLUTIONS_PER_TICK (132.0/6545.0) /52.0
-#define MM_PER_TICK (2.0 * PI * WHEEL_RADIUS * REVOLUTIONS_PER_TICK )
-#define DEG_PER_TICK (1.0/100.0)
-#define GAIN_ROTATE (1.0/0.90)
-#define GAIN_DRIVE (100.0/100.0)
-#define sign(x)((int8_t)((x) >= 0 ? 1 : -1))
-# define DIST_LSB 7 // only needs 1 wheel
-# define DIST_MSB 8
-# define BUTTON 13
-# define ANGLE_LSB 24 // only needs 1 wheel
-# define ANGLE_MSB 25
-// Truncated speed
-# define SPEED_LIMIT (int16_t)150 // mm / s
-# define SEARCH_SPEED ((int16_t)75) // mm / s
-# define STOP ((int16_t)0)// mm / s
-# define MIN_SPEED ((int16_t)50) // mm / s
+#include "uart.h"
+#include "ultrasonic.h"
+#include "align_deposit.h"
 
 uint32_t kobuki_good_packets = 0, kobuki_bad_packets = 0;
 uint8_t  kobuki_rx_buffer[SIZE_FEEDBACK];
@@ -186,4 +161,26 @@ void Kobuki_Rotate(int16_t speed) {
     payload[2] = (uint8_t)speed;
     payload[3] = (uint8_t)(speed >> 0x08);
     Kobuki_Tx(payload, sizeof(payload));
+}
+
+void Kobuki_Drive_Distance_Setpoint(uint16_t current_distance_tick, int16_t distance) {
+    distance_complete = 0;
+    setpoint_distance_tick = current_distance_tick + (int32_t) (distance / MM_PER_TICK);
+}
+
+void Kobuki_Drive_Distance(uint16_t current_distance_tick) {
+    volatile int16_t speed;
+    volatile int16_t error;
+    volatile uint16_t setpoint_alias;
+    // standard conditoon
+    error = (int16_t)((double)(setpoint_distance_tick - current_distance_tick ) * MM_PER_TICK);
+    setpoint_alias = ( uint16_t ) ( ( setpoint_distance_tick + 0x10000) % 0x10000);
+    if (((setpoint_distance_tick > 0xFFFF) && (current_distance_tick < setpoint_alias)) || ((setpoint_distance_tick < 0) && (current_distance_tick > setpoint_alias)))
+        error = (int16_t)((double)(setpoint_alias - current_distance_tick) * MM_PER_TICK);
+    if (abs(error) <= 2)
+        distance_complete = 1;
+    else {
+        speed = (sign(error) * MIN_SPEED) + (int16_t) (GAIN_DRIVE * error);
+        Kobuki_Drive(speed);
+    }
 }
