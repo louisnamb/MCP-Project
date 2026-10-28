@@ -158,9 +158,14 @@ int main(void) {
                 navigation.bumper_detected = (my_kobuki.bumper !=0U);
                 navigation.wheeldrop = my_kobuki.wheeldrop !=0U;
                 Navigation_update(&navigation, time_ms);
+                if (ultrasonic_object.detected && (ultrasonic_object.range_mm <= 400U)) {
+                    Send_Kobuki_Move(0, 0);       // Safely halt navigation motion
+                    Reset_Align_And_Deposit();    // Initialize align_deposit state machine variables
+                    mode = MODE_ALIGN_DEPOSIT;    // Switch FSM state!
+                }
                 break;
-
-
+            case MODE_ALIGN_DESOPIT:
+                break;
             default:
                 Send_Kobuki_Move(0 , 0);
                 break;
